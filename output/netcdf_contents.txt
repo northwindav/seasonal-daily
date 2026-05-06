@@ -1,0 +1,66 @@
+================================================================================
+NetCDF File Exploration
+================================================================================
+
+Found 2 NetCDF file(s)
+
+Exploring: CanESM5.1p1bc_FWI_20260501_20261130_init2026050100.nc
+--------------------------------------------------------------------------------
+Init date: 2026-05-01 00:00 UTC
+Forecast window (3 months): 2026-05-01 to 2026-07-31
+
+Dimensions: {'time': 214, 'member': 20, 'lat': 61, 'lon': 130}
+Variables: FWI
+Coordinates: lon, lat, time, member
+
+Temporal coverage:
+  Time steps: 214
+  Start: 2026-05-01T00:00:00.000000000
+  End: 2026-11-30T00:00:00.000000000
+  Approx. step: 1 nanoseconds
+
+Spatial coverage:
+  Latitude: 14.50° to 74.50° (61 points)
+  Longitude: 190.50° to 319.50° (130 points)
+
+FWI variable found:
+  Name: FWI
+  Shape: (214, 20, 61, 130)
+  Data type: float64
+
+Exploring: GEM5.2-NEMO_FWI_20260501_20261130_init2026050100.nc
+--------------------------------------------------------------------------------
+Init date: 2026-05-01 00:00 UTC
+Forecast window (3 months): 2026-05-01 to 2026-07-31
+
+Dimensions: {'time': 214, 'member': 20, 'lat': 61, 'lon': 130}
+Variables: FWI
+Coordinates: lon, lat, time, member
+
+Temporal coverage:
+  Time steps: 214
+  Start: 2026-05-01T00:00:00.000000000
+  End: 2026-11-30T00:00:00.000000000
+  Approx. step: 1 nanoseconds
+
+Spatial coverage:
+  Latitude: 14.50° to 74.50° (61 points)
+  Longitude: 190.50° to 319.50° (130 points)
+
+FWI variable found:
+  Name: FWI
+  Shape: (214, 20, 61, 130)
+  Data type: float64
+
+================================================================================
+SUMMARY
+================================================================================
+
+Total files explored: 2
+Successful reads: 2
+
+Common init date across files: 2026-05-01 00:00 UTC
+Analysis window (3 months): 2026-05-01 to 2026-07-31
+
+Files with FWI variable: 2/2
+✓ Both files contain FWI data. Ready to proceed with map generation.

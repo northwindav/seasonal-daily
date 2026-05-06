@@ -1,0 +1,8 @@
+netCDF4==1.7.1
+xarray==2024.2.0
+numpy==1.24.3
+pandas==2.0.3
+geopandas==0.14.0
+cartopy==0.22.0
+matplotlib==3.8.0
+shapely==2.0.1
