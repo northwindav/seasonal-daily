@@ -1,15 +1,15 @@
 # Seasonal Forecast Daily Products
 
 ## Intent
-* This code was generated with the help of AI coding assistants. All code has been reviewed by a human*
+_This code was generated with the help of AI coding assistants. All code has been reviewed by a human_
 
 This package takes as input NetCDF files (.nc) generated as part of the CFS Seasonal forecast v2. The intent is to provide day or week scale outputs in support of long term probabilistic projections as requested by Canadian agencies.
 
 In its present form, the outputs are centred on Ontario with a small buffer. This can be modified relatively easily in the plotting scripts.
 
-*Display of outputs at the sub-monthly scale has not been validated and therefore any products generated must be used with extreme caution, and must be provided to agencies with expert interpretation and some version of this caveat. 
+_Display of outputs at the sub-monthly scale has not been validated and therefore any products generated must be used with extreme caution, and must be provided to agencies with expert interpretation and some version of this caveat._
 
-Furthermore, monthly outputs are only shared publicly up to month 3, with both lack of validation and low confidence making use of later forecast times unadvisable.*
+_Furthermore, monthly outputs are only shared publicly up to month 3, with both lack of validation and low confidence making use of later forecast times unadvisable._
 
 ## Input
 
@@ -145,7 +145,7 @@ python scripts/generate_weekly_averaged_maps.py
 ## Important Notes
 
 ### Validation Status
-⚠️ **CAUTION:** These products are **unverified** and should not be used without:
+**CAUTION:** These products are **unverified** and should not be used without:
 - Full knowledge of seasonal forecast characteristics and limitations
 - Expert interpretation by qualified meteorologists
 - Understanding of model initialization and ensemble nature
@@ -195,8 +195,3 @@ pip install -r requirements.txt
 - Requires internet connection for initial download
 - Natural Earth data cached after first successful load
 
-### Memory issues
-- Scripts process and display data for Ontario region (~432 grid points)
-- All 20 ensemble members averaged before visualization
-- Single map generation uses ~500MB peak memory
-- Generation typically takes 1-3 hours for full 3-month suite (302 maps)
