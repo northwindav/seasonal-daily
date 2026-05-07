@@ -5,7 +5,7 @@ _This code was generated with the help of AI coding assistants. All code has bee
 
 This package takes as input NetCDF files (.nc) generated as part of the CFS Seasonal forecast v2. The intent is to provide day or week scale outputs in support of long term probabilistic projections as requested by Canadian agencies.
 
-In its present form, the outputs are centred on Ontario with a small buffer. This can be modified relatively easily in the plotting scripts.
+These products are useful for better understanding the monthly seasonal outputs, including differences between model means, and standard deviations between model members. It is not intended, nor should it be used, to provide any kind of forecast for a given day or week.
 
 _Display of outputs at the sub-monthly scale has not been validated and therefore any products generated must be used with extreme caution, and must be provided to agencies with expert interpretation and some version of this caveat._
 
@@ -71,7 +71,17 @@ Generates daily FWI maps for both forecast models over the 3-month forecast wind
 
 **Usage:**
 ```bash
+# Generate maps for default region (Canada-wide)
 python scripts/generate_daily_maps.py
+
+# Generate maps for specific region
+python scripts/generate_daily_maps.py --region ontario
+
+# Generate single date for specific region
+python scripts/generate_daily_maps.py --region quebec --date 2026-05-06
+
+# List available regions
+python scripts/generate_daily_maps.py --list-regions
 ```
 
 **Output:**
@@ -93,7 +103,14 @@ Generates comparative maps showing model disagreement (CanESM5 - GEM5.2-NEMO FWI
 
 **Usage:**
 ```bash
+# Generate difference maps for default region (Canada-wide)
 python scripts/generate_difference_maps.py
+
+# Generate difference maps for specific region
+python scripts/generate_difference_maps.py --region ontario
+
+# Generate single date for specific region
+python scripts/generate_difference_maps.py --region british_columbia --date 2026-05-06
 ```
 
 **Output:**
@@ -113,7 +130,14 @@ Generates weekly averaged FWI maps using 7-day fixed windows.
 
 **Usage:**
 ```bash
+# Generate weekly maps for default region (Canada-wide)
 python scripts/generate_weekly_averaged_maps.py
+
+# Generate weekly maps for specific region
+python scripts/generate_weekly_averaged_maps.py --region atlantic
+
+# List available regions
+python scripts/generate_weekly_averaged_maps.py --list-regions
 ```
 
 **Output:**
@@ -136,7 +160,14 @@ Generates daily maps showing ensemble standard deviation (forecast uncertainty).
 
 **Usage:**
 ```bash
+# Generate standard deviation maps for default region (Canada-wide)
 python scripts/generate_stddev_maps.py
+
+# Generate standard deviation maps for specific region
+python scripts/generate_stddev_maps.py --region prairies
+
+# Generate single date for specific region
+python scripts/generate_stddev_maps.py --region northern_canada --date 2026-05-15
 ```
 
 **Output:**
@@ -161,13 +192,13 @@ Higher standard deviation values indicate regions where ensemble members disagre
 
 | Product | Count | Scale | Time Coverage |
 |---------|-------|-------|----------------|
-| CanESM5 daily FWI | 92 | 0-50 | May 1 - Jul 31, 2026 |
-| GEM5.2-NEMO daily FWI | 92 | 0-50 | May 1 - Jul 31, 2026 |
-| Difference (CanESM5 - GEM5) | 92 | ±20 | May 1 - Jul 31, 2026 |
-| CanESM5 standard deviation | 92 | 0-20 | May 1 - Jul 31, 2026 |
-| GEM5.2-NEMO standard deviation | 92 | 0-20 | May 1 - Jul 31, 2026 |
-| CanESM5 weekly average | 13 | 0-50 | 13-week periods |
-| GEM5.2-NEMO weekly average | 13 | 0-50 | 13-week periods |
+| CanESM5 daily FWI | 92 | 0-50 | 3 months from init date |
+| GEM5.2-NEMO daily FWI | 92 | 0-50 | 3 months from init date |
+| Difference (CanESM5 - GEM5) | 92 | ±20 | 3 months from init date |
+| CanESM5 standard deviation | 92 | 0-20 | 3 months from init date |
+| GEM5.2-NEMO standard deviation | 92 | 0-20 | 3 months from init date |
+| CanESM5 weekly average | 13 | 0-50 | 1-week periods, out to 3 months from init |
+| GEM5.2-NEMO weekly average | 13 | 0-50 | 1-week periods, out to 3 months from init |
 | **Total Maps** | **486** | — | — |
 
 ## Important Notes
@@ -179,10 +210,11 @@ Higher standard deviation values indicate regions where ensemble members disagre
 - Understanding of model initialization and ensemble nature
 
 ### Spatial Domain
-- **Primary region:** Ontario + 150 km buffer
-- **Reference boundaries:** Manitoba and Quebec shown for context
+- **Configurable regions:** 7 geographic regions defined in `config/regions.yaml`
+- **Default region:** Canada-wide (national scope)
+- **Reference boundaries:** All specified provinces shown for context; adjoining provinces included for geographic reference
 - **Coordinate system:** WGS84 (EPSG:4326)
-- **Data resolution:** ~0.8° × 0.8° (cropped to 24×18 grid over Ontario region)
+- **Data resolution:** ~0.8° × 0.8° (cropped to region-specific grid)
 
 ### Temporal Information
 - **Initialization date:** Extracted from filename pattern `_init<YYYYMMDDHH>`
@@ -193,14 +225,70 @@ Higher standard deviation values indicate regions where ensemble members disagre
 - **Time step:** Daily in source data, aggregated to weekly windows
 
 ### File Naming Conventions
-- **Daily maps:** `{MODEL}_{YYYY-MM-DD}_FWI_map.png`
-  - Example: `CanESM5.1p1bc_2026-05-01_FWI_map.png`
-- **Difference maps:** `FWI_Difference_{YYYY-MM-DD}_map.png`
-  - Example: `FWI_Difference_2026-05-01_map.png`
-- **Standard deviation maps:** `{MODEL}_{YYYY-MM-DD}_STDDEV_map.png`
-  - Example: `CanESM5.1p1bc_2026-05-01_STDDEV_map.png`
-- **Weekly maps:** `{MODEL}_{YYYY-MM-DD}_to_{YYYY-MM-DD}_FWI_week.png`
-  - Example: `CanESM5.1p1bc_2026-05-01_to_2026-05-08_FWI_week.png`
+- **Daily maps:** `{MODEL}_{REGION}_{YYYY-MM-DD}_FWI_map.png`
+  - Example: `CanESM5.1p1bc_ontario_2026-05-01_FWI_map.png`
+- **Difference maps:** `FWI_Difference_{REGION}_{YYYY-MM-DD}_map.png`
+  - Example: `FWI_Difference_quebec_2026-05-01_map.png`
+- **Standard deviation maps:** `{MODEL}_{REGION}_{YYYY-MM-DD}_STDDEV_map.png`
+  - Example: `CanESM5.1p1bc_prairies_2026-05-01_STDDEV_map.png`
+- **Weekly maps:** `{MODEL}_{REGION}_{YYYY-MM-DD}_to_{YYYY-MM-DD}_FWI_week.png`
+  - Example: `CanESM5.1p1bc_atlantic_2026-05-01_to_2026-05-08_FWI_week.png`
+
+*Note:* Region names are included in filenames (spaces replaced with underscores) for easy organization and identification of geographic coverage. Use `--list-regions` to see available region names.
+
+## Regional Configuration
+
+This system supports multiple geographic regions defined in `config/regions.yaml`. Each region has customized:
+- **Spatial bounds** - Latitude/longitude bounding box
+- **Provincial boundaries** - Which provinces to display on maps
+- **Map projection** - Region-optimized cartographic projection
+
+### Available Regions
+
+| Region | Description | Area | Default |
+|--------|-------------|------|---------|
+| **ontario** | Ontario + buffer | Southern Ontario | ✗ |
+| **quebec** | Quebec + surrounding provinces | Eastern Quebec | ✗ |
+| **british_columbia** | BC and adjoining regions | Western Canada | ✗ |
+| **northern_canada** | Yukon and Northwest Territories | Arctic regions | ✗ |
+| **canada** | Canada-wide national scope | Full Canada | ✓ |
+| **prairies** | Manitoba, Saskatchewan, Alberta | Central Canada | ✗ |
+| **atlantic** | Nova Scotia, NB, PEI, NL | Atlantic Canada | ✗ |
+
+### Map Projections
+
+Each region uses a region-optimized map projection for improved geographic visualization:
+
+| Region | Projection | Central Lat | Central Lon | Std. Parallels |
+|--------|-----------|-------------|------------|----------------|
+| ontario | Lambert Conformal Conic | 49.0°N | 85.0°W | 45°N, 55°N |
+| quebec | Lambert Conformal Conic | 52.0°N | 68.0°W | 48°N, 56°N |
+| british_columbia | Lambert Conformal Conic | 55.0°N | 127.0°W | 50°N, 60°N |
+| northern_canada | Lambert Conformal Conic | 65.0°N | 120.0°W | 60°N, 70°N |
+| canada | Lambert Conformal Conic | 62.0°N | 95.0°W | 50°N, 70°N |
+| prairies | Lambert Conformal Conic | 55.0°N | 105.0°W | 50°N, 60°N |
+| atlantic | Lambert Conformal Conic | 45.5°N | 59.5°W | 43°N, 48°N |
+
+All projections use Lambert Conformal Conic, which is ideal for mid-latitude regions and preserves shape/angle better than simpler projections. Parameters (central latitude/longitude and standard parallels) are customized per region for optimal distortion characteristics.
+
+### Using Regional Configuration
+
+**Specify region explicitly:**
+```bash
+python scripts/generate_daily_maps.py --region atlantic --date 2026-05-06
+```
+
+**Use default region (Canada-wide):**
+```bash
+python scripts/generate_daily_maps.py
+```
+
+**List all available regions:**
+```bash
+python scripts/generate_daily_maps.py --list-regions
+```
+
+The region configuration file is located at `config/regions.yaml`. Regions can be customized by editing this file with new geographic bounds, provinces, or projection parameters.
 
 ## Dependencies
 

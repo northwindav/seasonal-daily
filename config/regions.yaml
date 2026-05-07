@@ -1,0 +1,116 @@
+# Regional configuration for FWI map generation
+# Each region defines spatial bounds, buffer, provinces, and map projection
+
+regions:
+  
+  ontario:
+    description: "Ontario and surrounding region"
+    bounds:
+      lat_min: 41.7
+      lat_max: 56.9
+      lon_min: -95.2
+      lon_max: -74.3
+    buffer_km: 150
+    provinces: ['Ontario', 'Manitoba', 'Québec']
+    projection:
+      type: "LambertConformal"
+      central_latitude: 49.0
+      central_longitude: -85.0
+      standard_parallels: [45, 55]
+    default: false
+  
+  quebec:
+    description: "Quebec and surrounding region"
+    bounds:
+      lat_min: 44.0
+      lat_max: 60.0
+      lon_min: -79.0
+      lon_max: -57.0
+    buffer_km: 150
+    provinces: ['Québec', 'Ontario', 'New Brunswick', 'Newfoundland and Labrador']
+    projection:
+      type: "LambertConformal"
+      central_latitude: 52.0
+      central_longitude: -68.0
+      standard_parallels: [48, 56]
+    default: false
+  
+  british_columbia:
+    description: "British Columbia and surrounding region"
+    bounds:
+      lat_min: 48.0
+      lat_max: 62.0
+      lon_min: -141.0
+      lon_max: -114.0
+    buffer_km: 200
+    provinces: ['British Columbia', 'Alberta', 'Yukon', 'Northwest Territories']
+    projection:
+      type: "LambertConformal"
+      central_latitude: 55.0
+      central_longitude: -127.0
+      standard_parallels: [50, 60]
+    default: false
+  
+  northern_canada:
+    description: "Northern Canada (Yukon and Northwest Territories)"
+    bounds:
+      lat_min: 58.0
+      lat_max: 72.0
+      lon_min: -141.0
+      lon_max: -100.0
+    buffer_km: 150
+    provinces: ['Yukon', 'Northwest Territories']
+    projection:
+      type: "LambertConformal"
+      central_latitude: 65.0
+      central_longitude: -120.0
+      standard_parallels: [60, 70]
+    default: false
+  
+  canada:
+    description: "Canada-wide (national scope)"
+    bounds:
+      lat_min: 40.0
+      lat_max: 85.0
+      lon_min: -141.0
+      lon_max: -52.0
+    buffer_km: 0
+    provinces: ['*']  # Load all Canadian provinces
+    projection:
+      type: "LambertConformal"
+      central_latitude: 62.0
+      central_longitude: -95.0
+      standard_parallels: [50, 70]
+    default: true
+  
+  prairies:
+    description: "Prairie provinces region"
+    bounds:
+      lat_min: 48.0
+      lat_max: 62.0
+      lon_min: -115.0
+      lon_max: -95.0
+    buffer_km: 150
+    provinces: ['Manitoba', 'Saskatchewan', 'Alberta', 'Northwest Territories']
+    projection:
+      type: "LambertConformal"
+      central_latitude: 55.0
+      central_longitude: -105.0
+      standard_parallels: [50, 60]
+    default: false
+  
+  atlantic:
+    description: "Atlantic Canada region"
+    bounds:
+      lat_min: 43.0
+      lat_max: 48.0
+      lon_min: -67.0
+      lon_max: -52.0
+    buffer_km: 150
+    provinces: ['Nova Scotia', 'New Brunswick', 'Prince Edward Island', 'Newfoundland and Labrador']
+    projection:
+      type: "LambertConformal"
+      central_latitude: 45.5
+      central_longitude: -59.5
+      standard_parallels: [43, 48]
+    default: false

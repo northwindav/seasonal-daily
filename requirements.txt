@@ -6,3 +6,4 @@ geopandas==0.14.0
 cartopy==0.22.0
 matplotlib==3.8.0
 shapely==2.0.1
+PyYAML==6.0.1
