@@ -244,8 +244,8 @@ def generate_daily_maps(input_dir='input', output_dir='output/daily', region_bou
         print(f"  Cropped dimensions: time={fwi.shape[0]}, members={fwi.shape[1]}, lat={fwi.shape[2]}, lon={fwi.shape[3]}")
         
         # Generate map for each timestep
-        # Average across ensemble members
-        fwi_mean = np.nanmean(fwi, axis=1) 
+        # Calculate median across ensemble members
+        fwi_median = np.nanmedian(fwi, axis=1) 
         
         # Filter to 3-month window
         # Convert time coordinates to datetime objects
@@ -258,7 +258,7 @@ def generate_daily_maps(input_dir='input', output_dir='output/daily', region_bou
                     continue
                 
                 date_str = date_obj.strftime('%Y-%m-%d')
-                fwi_daily = fwi_mean[tidx]
+                fwi_daily = fwi_median[tidx]
                 
                 # Create output path
                 model_name = filename.split('_')[0]

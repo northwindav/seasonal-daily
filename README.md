@@ -5,7 +5,7 @@ _This code was generated with the help of AI coding assistants. All code has bee
 
 This package takes as input NetCDF files (.nc) generated as part of the CFS Seasonal forecast v2. The intent is to provide day or week scale outputs in support of long term probabilistic projections as requested by Canadian agencies.
 
-These products are useful for better understanding the monthly seasonal outputs, including differences between model means, and standard deviations between model members. It is not intended, nor should it be used, to provide any kind of forecast for a given day or week.
+These products are useful for better understanding the monthly seasonal outputs, including differences between model medians, and standard deviations between model members. It is not intended, nor should it be used, to provide any kind of forecast for a given day or week.
 
 _Display of outputs at the sub-monthly scale has not been validated and therefore any products generated must be used with extreme caution, and must be provided to agencies with expert interpretation and some version of this caveat._
 
@@ -126,7 +126,7 @@ python scripts/generate_difference_maps.py --region british_columbia --date 2026
 - Resolution: 100 DPI
 
 #### 4. generate_weekly_averaged_maps.py
-Generates weekly averaged FWI maps using 7-day fixed windows.
+Generates weekly maps that display an average of the ensemble median FWI using 7-day fixed windows.
 
 **Usage:**
 ```bash
@@ -192,13 +192,13 @@ Higher standard deviation values indicate regions where ensemble members disagre
 
 | Product | Count | Scale | Time Coverage |
 |---------|-------|-------|----------------|
-| CanESM5 daily FWI | 92 | 0-50 | 3 months from init date |
-| GEM5.2-NEMO daily FWI | 92 | 0-50 | 3 months from init date |
+| CanESM5 daily median FWI | 92 | 0-50 | 3 months from init date |
+| GEM5.2-NEMO daily median FWI | 92 | 0-50 | 3 months from init date |
 | Difference (CanESM5 - GEM5) | 92 | ±20 | 3 months from init date |
 | CanESM5 standard deviation | 92 | 0-20 | 3 months from init date |
 | GEM5.2-NEMO standard deviation | 92 | 0-20 | 3 months from init date |
-| CanESM5 weekly average | 13 | 0-50 | 1-week periods, out to 3 months from init |
-| GEM5.2-NEMO weekly average | 13 | 0-50 | 1-week periods, out to 3 months from init |
+| CanESM5 weekly average of medians | 13 | 0-50 | 1-week periods, out to 3 months from init |
+| GEM5.2-NEMO weekly average of medians | 13 | 0-50 | 1-week periods, out to 3 months from init |
 | **Total Maps** | **486** | — | — |
 
 ## Important Notes
@@ -220,8 +220,10 @@ Higher standard deviation values indicate regions where ensemble members disagre
 - **Initialization date:** Extracted from filename pattern `_init<YYYYMMDDHH>`
 - **Forecast period:** 3 months from initialization (May 1 - July 31, 2026)
 - **Ensemble:** 20 members per model
-  - Daily/weekly FWI maps: displayed as ensemble mean
-  - Standard deviation maps: displayed as ensemble spread (standard deviation across 20 members)
+  - Daily FWI maps: displayed as ensemble median.
+  - Weekly FWI: Weekly mean of the ensemble medians for 1-week periods.
+  - Daily difference maps: Display the difference between ensemble medians.
+  - Standard deviation maps: displayed as ensemble spread (standard deviation across 20 members) for each of the two models.
 - **Time step:** Daily in source data, aggregated to weekly windows
 
 ### File Naming Conventions
@@ -257,7 +259,7 @@ This system supports multiple geographic regions defined in `config/regions.yaml
 
 ### Map Projections
 
-Each region uses a region-optimized map projection for improved geographic visualization:
+Each region uses a region-optimized default map projection for improved geographic visualization. Projections are currently limited to PlatCarree, Lambert Conformal, Stereographic and Mercator but can be modified in utils.py:
 
 | Region | Projection | Central Lat | Central Lon | Std. Parallels |
 |--------|-----------|-------------|------------|----------------|
@@ -269,7 +271,7 @@ Each region uses a region-optimized map projection for improved geographic visua
 | prairies | Lambert Conformal Conic | 55.0°N | 105.0°W | 50°N, 60°N |
 | atlantic | Lambert Conformal Conic | 45.5°N | 59.5°W | 43°N, 48°N |
 
-All projections use Lambert Conformal Conic, which is ideal for mid-latitude regions and preserves shape/angle better than simpler projections. Parameters (central latitude/longitude and standard parallels) are customized per region for optimal distortion characteristics.
+All projections use Lambert Conformal Conic by default, which is ideal for mid-latitude regions and preserves shape/angle better than simpler projections. Parameters (central latitude/longitude and standard parallels) are customized per region for optimal distortion characteristics.
 
 ### Using Regional Configuration
 

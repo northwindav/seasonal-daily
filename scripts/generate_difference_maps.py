@@ -244,9 +244,9 @@ def generate_difference_maps(input_dir='input', output_dir='output/difference', 
     # Convert time to datetime objects
     date_objs = convert_time_to_datetime(time)
     
-    # Average across ensemble members
-    canesm_mean = np.nanmean(canesm_fwi, axis=1)  # Average ensemble members
-    gem5_mean = np.nanmean(gem5_fwi, axis=1)
+    # Calculate median across ensemble members
+    canesm_median = np.nanmedian(canesm_fwi, axis=1)  # Median ensemble members
+    gem5_median = np.nanmedian(gem5_fwi, axis=1)
     
     # Process each date
     print("Generating difference maps...")
@@ -261,8 +261,8 @@ def generate_difference_maps(input_dir='input', output_dir='output/difference', 
         
         date_str = date_obj.strftime('%Y-%m-%d')
         
-        # Compute difference (CanESM5 - GEM5)
-        diff_data = canesm_mean[tidx] - gem5_mean[tidx]
+        # Compute difference (CanESM5 - GEM5) using medians
+        diff_data = canesm_median[tidx] - gem5_median[tidx]
         
         region_normalized = region_name.replace(' ', '_') if region_name else 'default'
         output_file = os.path.join(output_dir, f"FWI_Difference_{region_normalized}_{date_str}_map.png")

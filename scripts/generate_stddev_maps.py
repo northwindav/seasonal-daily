@@ -63,10 +63,13 @@ def get_ontario_bounds(buffer_km=150):
 # - model_name: str containing the name of the forecast model
 # - init_date: datetime object for the model initialization date
 # - provinces: dict of geodataframes for the provinces to plot
-def create_stddev_map(stddev_data, lat, lon, date_str, filename, ontario_bounds=None, model_name=None, init_date=None, provinces=None):
+def create_stddev_map(stddev_data, lat, lon, date_str, filename, ontario_bounds=None, model_name=None, init_date=None, provinces=None, projection=None):
 
+    if projection is None:
+        projection = ccrs.PlateCarree()
+    
     fig = plt.figure(figsize=(14, 10))
-    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax = plt.axes(projection=projection)
     
     # Set extent
     ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=ccrs.PlateCarree())
@@ -254,9 +257,10 @@ def generate_stddev_maps(input_dir='input', output_dir='output/stddev', region_b
                 
                 # Create map
                 try:
+                    projection = create_projection_from_config(projection_config)
                     create_stddev_map(stddev_daily, lat, lon, date_str, output_file, 
                                     ontario_bounds=region_bounds, model_name=model_name, 
-                                    init_date=init_date, provinces=provinces)
+                                    init_date=init_date, provinces=provinces, projection=projection)
                     print(f"    ✓ {date_str}")
                 except Exception as e:
                     print(f"    ✗ {date_str}: {e}")

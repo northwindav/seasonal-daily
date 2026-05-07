@@ -52,10 +52,13 @@ def get_weekly_windows(start_date, end_date):
     return windows
 
 
-def create_fwi_map(fwi_data, lat, lon, model_name, window_start, window_end, filename, init_date=None, provinces=None):
+def create_fwi_map(fwi_data, lat, lon, model_name, window_start, window_end, filename, init_date=None, provinces=None, projection=None):
 
+    if projection is None:
+        projection = ccrs.PlateCarree()
+    
     fig = plt.figure(figsize=(14, 10))
-    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax = plt.axes(projection=projection)
     
     ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=ccrs.PlateCarree())
     
@@ -203,8 +206,8 @@ def generate_weekly_maps(input_dir='input', output_dir='output/weekly', region_b
         # Convert time to datetime objects
         date_objs = convert_time_to_datetime(time)
         
-        # Average across ensemble members
-        fwi_mean = np.nanmean(fwi, axis=1)  # Average ensemble members
+        # Calculate median across ensemble members
+        fwi_median = np.nanmedian(fwi, axis=1)  # Median ensemble members
         
         # Extract model name from filename for title display
         if 'CanESM5' in filename:
@@ -221,7 +224,7 @@ def generate_weekly_maps(input_dir='input', output_dir='output/weekly', region_b
             
             if indices:
                 # Average FWI across the week
-                fwi_weekly = np.nanmean(fwi_mean[indices], axis=0)
+                fwi_weekly = np.nanmean(fwi_median[indices], axis=0)
                 
                 # Create output path with date range
                 date_label_start = win_start.strftime('%Y-%m-%d')
@@ -231,8 +234,9 @@ def generate_weekly_maps(input_dir='input', output_dir='output/weekly', region_b
                 
                 # Create map
                 try:
+                    projection = create_projection_from_config(projection_config)
                     create_fwi_map(fwi_weekly, lat, lon, model_name, win_start, win_end, output_file, 
-                                  init_date=init_date, provinces=provinces)
+                                  init_date=init_date, provinces=provinces, projection=projection)
                     print(f"  ✓ {date_label_start} to {date_label_end}")
                 except Exception as e:
                     print(f"  ✗ {date_label_start} to {date_label_end}: {e}")
