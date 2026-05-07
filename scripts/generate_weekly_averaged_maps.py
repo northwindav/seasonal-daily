@@ -4,7 +4,6 @@
 # Outputs are also limited to the first 3 months of the forecast.
 
 import os
-import re
 from datetime import datetime, timedelta
 import xarray as xr
 import numpy as np
@@ -14,107 +13,18 @@ import matplotlib.colors as mcolors
 from matplotlib.colors import LinearSegmentedColormap
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import geopandas as gpd
 import warnings
 
+from utils import (
+    parse_init_date_from_filename,
+    create_fwi_colormap,
+    load_provincial_boundaries,
+    crop_to_region,
+    get_3month_window,
+    convert_time_to_datetime,
+)
+
 warnings.filterwarnings('ignore')
-
-
-def parse_init_date_from_filename(filename):
-
-    match = re.search(r'_init(\d{10})', filename)
-    if match:
-        date_str = match.group(1)
-        return datetime.strptime(date_str, '%Y%m%d%H')
-    return None
-
-
-def create_fwi_colormap():
-
-    colors = [
-        (0.0, '#0000FF'),      # Blue at 0
-        (0.25, '#00AA00'),     # Green at 5
-        (0.3, '#FFFF00'),      # Yellow at 15
-        (0.6, '#FF8800'),      # Orange at 30
-        (1.0, '#8B008B'),      # Purple at 50
-    ]
-    
-    n_bins = 256
-    cmap = LinearSegmentedColormap.from_list('fwi_daily', colors, N=n_bins)
-    return cmap
-
-
-def load_provincial_boundaries():
-
-    try:
-        ne_url = "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_1_states_provinces.zip"
-        admin1 = gpd.read_file(ne_url)
-        
-        # Filter for Canada
-        canada = admin1[admin1['admin'] == 'Canada']
-        
-        provinces = {}
-        for prov_name in ['Ontario', 'Manitoba', 'Québec']:
-            prov_data = canada[canada['name'] == prov_name]
-            if len(prov_data) > 0:
-                provinces[prov_name] = prov_data
-            else:
-                # Try alternate spelling
-                if prov_name == 'Québec':
-                    prov_data = canada[canada['name'] == 'Quebec']
-                    if len(prov_data) > 0:
-                        provinces[prov_name] = prov_data
-        
-        return provinces
-    except Exception as e:
-        print(f"Warning: Could not load provincial boundaries: {e}")
-        return {}
-
-
-def get_ontario_bounds(buffer_km=150):
-  
-    ont_lat_min, ont_lat_max = 41.7, 56.9
-    ont_lon_min, ont_lon_max = -95.2, -74.3
-    
-    # Rough conversion: 1 degree ~ 111 km
-    buffer_deg = buffer_km / 111.0
-    
-    bounds = {
-        'lat_min': ont_lat_min - buffer_deg,
-        'lat_max': ont_lat_max + buffer_deg,
-        'lon_min': ont_lon_min - buffer_deg,
-        'lon_max': ont_lon_max + buffer_deg,
-    }
-    
-    return bounds
-
-
-def crop_to_region(ds, bounds):
-
-    ds_cropped = ds.sel(lat=slice(bounds['lat_min'], bounds['lat_max']))
-    
-    lon_min, lon_max = bounds['lon_min'], bounds['lon_max']
-    
-    # Check if data uses -180 to 180 or 0 to 360
-    lon_vals = ds['lon'].values
-    if np.all(lon_vals >= 0):
-        lon_min = lon_min % 360
-        lon_max = lon_max % 360
-    
-    # Handle wrapping
-    if lon_min > lon_max:
-        ds_cropped = ds_cropped.sel(lon=(ds_cropped.lon >= lon_min) | (ds_cropped.lon <= lon_max))
-    else:
-        ds_cropped = ds_cropped.sel(lon=slice(lon_min, lon_max))
-    
-    return ds_cropped
-
-
-def get_3month_window(init_date):
-
-    start_date = init_date
-    end_date = init_date + timedelta(days=91)
-    return start_date, end_date
 
 
 def get_weekly_windows(start_date, end_date):
@@ -280,7 +190,7 @@ def generate_weekly_maps(input_dir='input', output_dir='output/weekly', buffer_k
         fwi = ds_cropped['FWI'].values  # Shape: (time, member, lat, lon)
         
         # Convert time to datetime objects
-        date_objs = [pd.Timestamp(t).to_pydatetime() for t in time]
+        date_objs = convert_time_to_datetime(time)
         
         # Average across ensemble members
         fwi_mean = np.nanmean(fwi, axis=1)  # Average ensemble members

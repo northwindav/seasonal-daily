@@ -3,73 +3,28 @@
 # Outputs are also limited to the first 3 months of the forecast.
 
 import os
-import re
 from datetime import datetime, timedelta
 import xarray as xr
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Rectangle
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import geopandas as gpd
 import warnings
+
+from utils import (
+    parse_init_date_from_filename,
+    create_fwi_colormap,
+    load_provincial_boundaries,
+    crop_to_region,
+    get_3month_window,
+    convert_time_to_datetime,
+)
 
 warnings.filterwarnings('ignore')
 
-# Extract model init date from the filename. Used in the footers of all maps.
-def parse_init_date_from_filename(filename):
-    match = re.search(r'_init(\d{10})', filename)
-    if match:
-        date_str = match.group(1)
-        return datetime.strptime(date_str, '%Y%m%d%H')
-    return None
-
-# Hard-code the color map for consistency across models and spatial/temporal dimensions. 
-# Define FWI of 15 as the starting point for yellow-ish. Adjust as needed for regional fire risk thresholds.
-def create_fwi_colormap():
-
-    colors = [
-        (0.0, '#1f77b4'),      # Blue at FWI 0
-        (0.25, '#2ca02c'),     # Green around FWI 12.5
-        (0.3, '#ffff00'),      # Light yellow starts at FWI 15
-        (0.6, '#ff7f0e'),      # Orange around FWI 30
-        (1.0, '#8B008B'),      # Purple at FWI 50
-    ]
-    
-    n_bins = 256
-    cmap = LinearSegmentedColormap.from_list('fwi_custom', colors, N=n_bins)
-    return cmap
-
-# Retrieve provincial boundaries from naturalearth. 
-# Currently hard-coded for only MB, ON and PQ
-# Returns a geodataframe for each province selected
-def load_provincial_boundaries():
-
-    try:
-        ne_url = "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_1_states_provinces.zip"
-        admin1 = gpd.read_file(ne_url)
-        
-        canada = admin1[admin1['admin'] == 'Canada']
-        
-        provinces = {}
-        for prov_name in ['Ontario', 'Manitoba', 'Québec']:
-            prov_data = canada[canada['name'] == prov_name]
-            if len(prov_data) > 0:
-                provinces[prov_name] = prov_data
-            else:
-                # As of May 2026 the accent aigu is required
-                if prov_name == 'Québec':
-                    prov_data = canada[canada['name'] == 'Quebec']
-                    if len(prov_data) > 0:
-                        provinces[prov_name] = prov_data
-        
-        return provinces
-    except Exception as e:
-        print(f"Warning: Could not load provincial boundaries: {e}")
-        return {}
 
 # Define the map bounds and buffer
 # Currently hard-coded for ON 
@@ -94,40 +49,7 @@ def get_ontario_bounds(buffer_km=150):
     
     return bounds
 
-# Crop the xarray containing the actual data, based on the bounds defined in get_ontario_bounds()
-def crop_to_region(ds, bounds):
-
-    # Crop latitude
-    ds_cropped = ds.sel(lat=slice(bounds['lat_min'], bounds['lat_max']))
-    
-    # For longitude, need to handle 0-360 system if necessary
-    lon_min, lon_max = bounds['lon_min'], bounds['lon_max']
-    
-    # Check if data uses -180 to 180 or 0 to 360
-    lon_vals = ds['lon'].values
-    if np.all(lon_vals >= 0):
-        # Convert -180 to 180 bounds to 0 to 360
-        lon_min = lon_min % 360
-        lon_max = lon_max % 360
-    
-    # Handle wrapping
-    if lon_min > lon_max:
-        # Wrapping case (e.g., lon_min=280, lon_max=50)
-        ds_cropped = ds_cropped.sel(lon=(ds_cropped.lon >= lon_min) | (ds_cropped.lon <= lon_max))
-    else:
-        ds_cropped = ds_cropped.sel(lon=slice(lon_min, lon_max))
-    
-    return ds_cropped
-
-# We hard-code a 3-month limit since plotting at daily resolution is completely
-# beyond the intent of the seasonal product, and is also unvalidated.
-def get_3month_window(init_date):
-
-    start_date = init_date
-    end_date = init_date + timedelta(days=91)  # ~3 months
-    return start_date, end_date
-
-# Called for each map, and outputs a png
+# Generate map for each timestep
 # In:
 # - fwi_data: numpy.ndarray. 2D array containing FWI data for a single day, cropped to the ROI.
 # - lat and lon: numpy.ndarray
@@ -302,7 +224,7 @@ def generate_daily_maps(input_dir='input', output_dir='output/daily', buffer_km=
         
         # Filter to 3-month window
         # Convert time coordinates to datetime objects
-        date_objs = [pd.Timestamp(t).to_pydatetime() for t in time]
+        date_objs = convert_time_to_datetime(time)
         for tidx, date_obj in enumerate(date_objs):
             # Check if within 3-month window
             if start_date <= date_obj <= end_date:

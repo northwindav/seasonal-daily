@@ -1,6 +1,6 @@
-# Generate difference FWI maps based on average outputs from the 2 CFS Seasonal Forecast v2 ensembles
-# Currently in exploratory state and is hard-coded for Ontario
-# Outputs are also limited to the first 3 months of the forecast.
+# Generate daily FWI standard deviation maps based on outputs from the 2 CFS Seasonal Forecast v2 ensembles
+# Shows the ensemble uncertainty for each day across the 20 ensemble members
+# Outputs are limited to the first 3 months of the forecast.
 
 import os
 from datetime import datetime, timedelta
@@ -9,13 +9,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.patches import Rectangle
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import warnings
 
 from utils import (
     parse_init_date_from_filename,
-    create_difference_colormap,
+    create_stddev_colormap,
     load_provincial_boundaries,
     crop_to_region,
     get_3month_window,
@@ -24,6 +25,7 @@ from utils import (
 
 warnings.filterwarnings('ignore')
 
+
 # Define the map bounds and buffer
 # Currently hard-coded for ON 
 # Buffer may be expanded from 150 km if desired
@@ -31,9 +33,11 @@ warnings.filterwarnings('ignore')
 # Returns: dictionary containing a buffered bounding box with coordinates in degrees
 def get_ontario_bounds(buffer_km=150):
 
+    # Ontario bounds (approximate)
     ont_lat_min, ont_lat_max = 41.7, 56.9
     ont_lon_min, ont_lon_max = -95.2, -74.3
     
+    # Rough conversion: 1 degree ~ 111 km at equator, ~80 km at 45°N
     buffer_deg = buffer_km / 111.0
     
     bounds = {
@@ -45,16 +49,17 @@ def get_ontario_bounds(buffer_km=150):
     
     return bounds
 
-# Calculate the difference between the 20-member average from each model and create a map for each date in the 3-month window.
-# Arguments:
-# - diff_data: 2D array of FWI differences for a single date (CanESM5 - GEM5)
-# - lat, lon: 1D arrays of latitude and longitude values
-# - date_str: String representation of the date for the title
-# - filename: string, Output filename for the PNG
-# - ontario_bounds: Dictionary containing Ontario bounds for reference
-# - init_date: datetime object, Initialization date of the forecast
-# - provinces: Dictionary of GeoDataFrames for provinces
-def create_difference_map(diff_data, lat, lon, date_str, filename, ontario_bounds=None, init_date=None, provinces=None):
+# Generate map for each timestep
+# In:
+# - stddev_data: numpy.ndarray. 2D array containing FWI standard deviation for a single day, cropped to the ROI.
+# - lat and lon: numpy.ndarray
+# - date_str: string for the title (e.g., '2026-05-06')
+# - filename: output file name for the png
+# - ontario_bounds: dict containing the ROI boundaries
+# - model_name: str containing the name of the forecast model
+# - init_date: datetime object for the model initialization date
+# - provinces: dict of geodataframes for the provinces to plot
+def create_stddev_map(stddev_data, lat, lon, date_str, filename, ontario_bounds=None, model_name=None, init_date=None, provinces=None):
 
     fig = plt.figure(figsize=(14, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
@@ -62,19 +67,19 @@ def create_difference_map(diff_data, lat, lon, date_str, filename, ontario_bound
     # Set extent
     ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=ccrs.PlateCarree())
     
-    # Add features
+    # Add features. 
+    # Cities are not included by default but can be accessed via cartopy's Natural Earth features.
     ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
     ax.add_feature(cfeature.BORDERS, linewidth=0.5)
     ax.add_feature(cfeature.LAKES, alpha=0.3)
     ax.add_feature(cfeature.RIVERS, linewidth=0.3)
     ax.gridlines(draw_labels=True, alpha=0.3)
     
-    # Plot difference data with custom colormap
-    # Values range from -20 to +20, centered at 0
-    cmap = create_difference_colormap()
-    norm = mcolors.Normalize(vmin=-20, vmax=20)
+    # Plot standard deviation data with custom colormap and fixed scale (0-20)
+    cmap = create_stddev_colormap()
+    norm = mcolors.Normalize(vmin=0, vmax=20)
     
-    im = ax.contourf(lon, lat, diff_data, levels=np.arange(-20, 21, 2), cmap=cmap, norm=norm,
+    im = ax.contourf(lon, lat, stddev_data, levels=np.arange(0, 21, 2), cmap=cmap, norm=norm,
                      transform=ccrs.PlateCarree())
     
     # Plot actual provincial boundaries
@@ -100,18 +105,30 @@ def create_difference_map(diff_data, lat, lon, date_str, filename, ontario_bound
                                  facecolor='none', edgecolor='indigo', linewidth=1.5,
                                  linestyle='--', label='Quebec' if idx == 0 else '')
     
+    # Add Ontario buffer box reference if no provinces loaded
+    if not provinces or len(provinces) == 0:
+        if ontario_bounds:
+            rect = Rectangle((ontario_bounds['lon_min'], ontario_bounds['lat_min']),
+                            ontario_bounds['lon_max'] - ontario_bounds['lon_min'],
+                            ontario_bounds['lat_max'] - ontario_bounds['lat_min'],
+                            linewidth=2, edgecolor='blue', facecolor='none',
+                            transform=ccrs.PlateCarree(), label='Ontario + buffer')
+            ax.add_patch(rect)
+    
     ax.legend(loc='upper left', fontsize=9)
     
-    # Colorbar
+    # Colorbar with fixed scale
     cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.02, shrink=0.8)
-    cbar.set_label('FWI Difference (CanESM5 - GEM5.2-NEMO)', rotation=270, labelpad=20)
-    cbar.set_ticks(np.arange(-20, 21, 2))
+    cbar.set_label('Ensemble Std Dev (FWI)', rotation=270, labelpad=20)
+    cbar.set_ticks(np.arange(0, 21, 2))
     
-    # Title
-    title_str = f'Daily FWI Difference (CanESM5 - GEM5.2-NEMO): {date_str}'
+    # Build title with model name and init date
+    title_str = f'Daily FWI Standard Deviation - {date_str}'
+    if model_name:
+        title_str = f'{model_name}: {title_str}'
     ax.set_title(title_str, fontsize=14, fontweight='bold')
     
-    # Add footer
+    # Add footer with init datetime, generation timestamp, and caution
     now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
     footer_lines = []
     
@@ -134,15 +151,14 @@ def create_difference_map(diff_data, lat, lon, date_str, filename, ontario_bound
     
     return filename
 
-# Calling function for the generation of each map
-# Args:
-# - input_dir: Directory containing input .nc files
-# - output_dir: Output directory for maps
-# - buffer_km: Buffer around Ontario in kilometers
-# - target_date: If specified, only generate map for this date
-def generate_difference_maps(input_dir='input', output_dir='output/difference', buffer_km=150, target_date=None):
+# Calling function for generating the standard deviation maps.
+# - input_dir (str): Directory containing input .nc files
+# - output_dir (str): Directory to save output maps
+# - buffer_km (float): Buffer around Ontario in kilometers
+# - target_date (datetime, optional): If specified, only generate map for this date
+def generate_stddev_maps(input_dir='input', output_dir='output/stddev', buffer_km=150, target_date=None):
 
-    # Load provincial boundaries
+    # Load provincial boundaries once
     print("Loading provincial boundaries...")
     provinces = load_provincial_boundaries()
     if provinces:
@@ -159,11 +175,11 @@ def generate_difference_maps(input_dir='input', output_dir='output/difference', 
     # Find all .nc files
     nc_files = sorted([f for f in os.listdir(input_dir) if f.endswith('.nc')])
     
-    if len(nc_files) < 2:
-        print("Error: Need at least 2 NetCDF files for comparison")
+    if not nc_files:
+        print("No .nc files found in input directory")
         return
     
-    # Determine 3-month window and init date
+    # Determine 3-month window from first file
     init_date = None
     for filename in nc_files:
         init_date = parse_init_date_from_filename(filename)
@@ -178,92 +194,58 @@ def generate_difference_maps(input_dir='input', output_dir='output/difference', 
     print(f"Processing 3-month window: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
     print()
     
-    # Load both files
-    file_data = {}
+    # Process each file
     for filename in nc_files:
         filepath = os.path.join(input_dir, filename)
-        print(f"Loading: {filename}")
+        print(f"Processing: {filename}")
         
         try:
             ds = xr.open_dataset(filepath)
-            ds_cropped = crop_to_region(ds, ontario_bounds)
-            file_data[filename] = {
-                'ds': ds_cropped,
-                'lat': ds_cropped['lat'].values,
-                'lon': ds_cropped['lon'].values,
-                'time': ds_cropped['time'].values,
-                'fwi': ds_cropped['FWI'].values,
-            }
         except Exception as e:
-            print(f"  Error: {e}")
-            return
-    
-    print()
-    
-    # Identify CanESM5 and GEM5 files
-    canesm_file = None
-    gem5_file = None
-    
-    for filename in file_data.keys():
-        if 'CanESM' in filename:
-            canesm_file = filename
-        elif 'GEM5' in filename:
-            gem5_file = filename
-    
-    if not canesm_file or not gem5_file:
-        print("Error: Could not identify CanESM5 and GEM5 files")
-        return
-    
-    print(f"CanESM5 file: {canesm_file}")
-    print(f"GEM5 file: {gem5_file}")
-    print()
-    
-    # Extract data
-    canesm_fwi = file_data[canesm_file]['fwi']  # Shape: (time, member, lat, lon)
-    gem5_fwi = file_data[gem5_file]['fwi']
-    
-    lat = file_data[canesm_file]['lat']
-    lon = file_data[canesm_file]['lon']
-    time = file_data[canesm_file]['time']
-    
-    # Convert time to datetime objects
-    date_objs = convert_time_to_datetime(time)
-    
-    # Average across ensemble members
-    canesm_mean = np.nanmean(canesm_fwi, axis=1)  # Average ensemble members
-    gem5_mean = np.nanmean(gem5_fwi, axis=1)
-    
-    # Process each date
-    print("Generating difference maps...")
-    for tidx, date_obj in enumerate(date_objs):
-        # Check if within 3-month window
-        if not (start_date <= date_obj <= end_date):
+            print(f"  Error opening file: {e}")
             continue
         
-        # If target_date specified, only process that date
-        if target_date and date_obj.date() != target_date.date():
-            continue
+        # Crop to region
+        ds_cropped = crop_to_region(ds, ontario_bounds)
         
-        date_str = date_obj.strftime('%Y-%m-%d')
+        # Extract arrays
+        lat = ds_cropped['lat'].values
+        lon = ds_cropped['lon'].values
+        time = ds_cropped['time'].values
+        fwi = ds_cropped['FWI'].values  # Shape: (time, member, lat, lon)
         
-        # Compute difference (CanESM5 - GEM5)
-        diff_data = canesm_mean[tidx] - gem5_mean[tidx]
+        # Debugging info
+        print(f"  Cropped dimensions: time={fwi.shape[0]}, members={fwi.shape[1]}, lat={fwi.shape[2]}, lon={fwi.shape[3]}")
         
-        output_file = os.path.join(output_dir, f"FWI_Difference_{date_str}_map.png")
+        # Generate map for each timestep
+        # Compute standard deviation across ensemble members
+        fwi_stddev = np.nanstd(fwi, axis=1) 
         
-        # Create map
-        try:
-            create_difference_map(diff_data, lat, lon, date_str, output_file,
-                                ontario_bounds=ontario_bounds, init_date=init_date,
-                                provinces=provinces)
-            print(f"  ✓ {date_str}")
-        except Exception as e:
-            print(f"  ✗ {date_str}: {e}")
-    
-    print()
-    print(f"Difference maps saved to: {output_dir}")
-
+        # Filter to 3-month window
+        # Convert time coordinates to datetime objects
+        date_objs = convert_time_to_datetime(time)
+        for tidx, date_obj in enumerate(date_objs):
+            # Check if within 3-month window
+            if start_date <= date_obj <= end_date:
+                # If target_date specified, only process that date
+                if target_date and date_obj.date() != target_date.date():
+                    continue
+                
+                date_str = date_obj.strftime('%Y-%m-%d')
+                stddev_daily = fwi_stddev[tidx]
+                
+                # Create output path
+                model_name = filename.split('_')[0]
+                output_file = os.path.join(output_dir, f"{model_name}_{date_str}_STDDEV_map.png")
+                
+                # Create map
+                try:
+                    create_stddev_map(stddev_daily, lat, lon, date_str, output_file, 
+                                    ontario_bounds=ontario_bounds, model_name=model_name, 
+                                    init_date=init_date, provinces=provinces)
+                    print(f"    ✓ {date_str}")
+                except Exception as e:
+                    print(f"    ✗ {date_str}: {e}")
 
 if __name__ == '__main__':
-    # Generate maps for all dates in 3-month window (or specify target_date=datetime(2026, 5, 6) for testing)
-    generate_difference_maps()
+    generate_stddev_maps()

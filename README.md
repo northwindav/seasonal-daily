@@ -131,6 +131,32 @@ python scripts/generate_weekly_averaged_maps.py
 - Metadata footer: initialization date, generation timestamp, caution disclaimer
 - Resolution: 100 DPI
 
+#### 5. generate_stddev_maps.py
+Generates daily maps showing ensemble standard deviation (forecast uncertainty).
+
+**Usage:**
+```bash
+python scripts/generate_stddev_maps.py
+```
+
+**Output:**
+- 92 standard deviation maps for CanESM5.1p1bc
+- 92 standard deviation maps for GEM5.2-NEMO
+- Total: 184 daily ensemble standard deviation maps
+
+**Output Location:** `output/stddev/`
+
+**Map Features:**
+- Fixed std dev scale: 0-20 FWI units
+- Custom color gradient: white → yellow → orange → red (increasing uncertainty)
+- Provincial boundaries: Ontario (solid blue), Manitoba (dashed green), Quebec (dashed purple)
+- Shows spatial patterns of ensemble spread (higher values = greater model agreement uncertainty)
+- Metadata footer: initialization date, generation timestamp, caution disclaimer
+- Resolution: 100 DPI
+
+**Interpretation:**
+Higher standard deviation values indicate regions where ensemble members disagree more, representing greater forecast uncertainty. Lower values indicate higher ensemble agreement and potentially more confident forecasts.
+
 ### Complete Map Suite
 
 | Product | Count | Scale | Time Coverage |
@@ -138,9 +164,11 @@ python scripts/generate_weekly_averaged_maps.py
 | CanESM5 daily FWI | 92 | 0-50 | May 1 - Jul 31, 2026 |
 | GEM5.2-NEMO daily FWI | 92 | 0-50 | May 1 - Jul 31, 2026 |
 | Difference (CanESM5 - GEM5) | 92 | ±20 | May 1 - Jul 31, 2026 |
+| CanESM5 standard deviation | 92 | 0-20 | May 1 - Jul 31, 2026 |
+| GEM5.2-NEMO standard deviation | 92 | 0-20 | May 1 - Jul 31, 2026 |
 | CanESM5 weekly average | 13 | 0-50 | 13-week periods |
 | GEM5.2-NEMO weekly average | 13 | 0-50 | 13-week periods |
-| **Total Maps** | **302** | — | — |
+| **Total Maps** | **486** | — | — |
 
 ## Important Notes
 
@@ -159,7 +187,9 @@ python scripts/generate_weekly_averaged_maps.py
 ### Temporal Information
 - **Initialization date:** Extracted from filename pattern `_init<YYYYMMDDHH>`
 - **Forecast period:** 3 months from initialization (May 1 - July 31, 2026)
-- **Ensemble:** 20 members per model, displayed as ensemble mean
+- **Ensemble:** 20 members per model
+  - Daily/weekly FWI maps: displayed as ensemble mean
+  - Standard deviation maps: displayed as ensemble spread (standard deviation across 20 members)
 - **Time step:** Daily in source data, aggregated to weekly windows
 
 ### File Naming Conventions
@@ -167,6 +197,8 @@ python scripts/generate_weekly_averaged_maps.py
   - Example: `CanESM5.1p1bc_2026-05-01_FWI_map.png`
 - **Difference maps:** `FWI_Difference_{YYYY-MM-DD}_map.png`
   - Example: `FWI_Difference_2026-05-01_map.png`
+- **Standard deviation maps:** `{MODEL}_{YYYY-MM-DD}_STDDEV_map.png`
+  - Example: `CanESM5.1p1bc_2026-05-01_STDDEV_map.png`
 - **Weekly maps:** `{MODEL}_{YYYY-MM-DD}_to_{YYYY-MM-DD}_FWI_week.png`
   - Example: `CanESM5.1p1bc_2026-05-01_to_2026-05-08_FWI_week.png`
 
