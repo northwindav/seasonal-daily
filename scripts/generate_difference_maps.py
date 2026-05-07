@@ -1,9 +1,6 @@
-"""
-Generate difference maps showing CanESM5 - GEM5.2-NEMO FWI values.
-
-This script loads FWI data from both input NetCDF files, computes the difference
-(CanESM5 minus GEM5.2-NEMO), and generates visualizations for the 3-month forecast window.
-"""
+# Generate difference FWI maps based on average outputs from the 2 CFS Seasonal Forecast v2 ensembles
+# Currently in exploratory state and is hard-coded for Ontario
+# Outputs are also limited to the first 3 months of the forecast.
 
 import os
 import re
@@ -21,25 +18,18 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-
+# Get init date from filename pattern: *_init<YYYYMMDDHH>.nc
 def parse_init_date_from_filename(filename):
-    """Extract init date from filename pattern: *_init<YYYYMMDDHH>.nc"""
     match = re.search(r'_init(\d{10})', filename)
     if match:
         date_str = match.group(1)
         return datetime.strptime(date_str, '%Y%m%d%H')
     return None
 
-
+# Hard-code the color map for consistency across models and spatial/temporal dimensions. 
+# Define FWI of 15 as the starting point for yellow-ish. Adjust as needed for regional fire risk thresholds.
 def create_difference_colormap():
-    """
-    Create a colormap for FWI difference values (-20 to +20):
-    - Purple/Magenta at -20 (GEM5 higher than CanESM5)
-    - Blue at -10
-    - White at 0 (no difference)
-    - Yellow/Orange at +10
-    - Red at +20 (CanESM5 higher than GEM5)
-    """
+
     colors = [
         (0.0, '#8B008B'),      # Purple at -10
         (0.25, '#1f77b4'),     # Blue at -5
@@ -52,9 +42,10 @@ def create_difference_colormap():
     cmap = LinearSegmentedColormap.from_list('fwi_difference', colors, N=n_bins)
     return cmap
 
-
+# Retrieve provincial boundaries from naturalearth. 
+# Currently hard-coded for only MB, ON and PQ
+# Returns a geodataframe for each province selected
 def load_provincial_boundaries():
-    """Load actual provincial boundaries for Ontario, Manitoba, and Quebec."""
     try:
         ne_url = "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_1_states_provinces.zip"
         admin1 = gpd.read_file(ne_url)
@@ -68,7 +59,7 @@ def load_provincial_boundaries():
             if len(prov_data) > 0:
                 provinces[prov_name] = prov_data
             else:
-                # Try alternate spelling
+                # As of May 2026 the accent aigu is required
                 if prov_name == 'Québec':
                     prov_data = canada[canada['name'] == 'Quebec']
                     if len(prov_data) > 0:
@@ -79,9 +70,13 @@ def load_provincial_boundaries():
         print(f"Warning: Could not load provincial boundaries: {e}")
         return {}
 
-
+# Define the map bounds and buffer
+# Currently hard-coded for ON 
+# Buffer may be expanded from 150 km if desired
+# This is a crude approach, where we define a bounding box rather than creating a true buffer
+# Returns: dictionary containing a buffered bounding box with coordinates in degrees
 def get_ontario_bounds(buffer_km=150):
-    """Get Ontario boundary with buffer in degrees."""
+
     ont_lat_min, ont_lat_max = 41.7, 56.9
     ont_lon_min, ont_lon_max = -95.2, -74.3
     
@@ -96,9 +91,9 @@ def get_ontario_bounds(buffer_km=150):
     
     return bounds
 
-
+# Crop the xarray containing the actual data, based on the bounds defined in get_ontario_bounds()
 def crop_to_region(ds, bounds):
-    """Crop xarray dataset to specified lat/lon bounds."""
+  
     ds_cropped = ds.sel(lat=slice(bounds['lat_min'], bounds['lat_max']))
     
     lon_min, lon_max = bounds['lon_min'], bounds['lon_max']
@@ -119,26 +114,22 @@ def crop_to_region(ds, bounds):
 
 
 def get_3month_window(init_date):
-    """Get the 3-month forecast window from init date."""
+
     start_date = init_date
     end_date = init_date + timedelta(days=91)
     return start_date, end_date
 
-
+# Calculate the difference between the 20-member average from each model and create a map for each date in the 3-month window.
+# Arguments:
+# - diff_data: 2D array of FWI differences for a single date (CanESM5 - GEM5)
+# - lat, lon: 1D arrays of latitude and longitude values
+# - date_str: String representation of the date for the title
+# - filename: string, Output filename for the PNG
+# - ontario_bounds: Dictionary containing Ontario bounds for reference
+# - init_date: datetime object, Initialization date of the forecast
+# - provinces: Dictionary of GeoDataFrames for provinces
 def create_difference_map(diff_data, lat, lon, date_str, filename, ontario_bounds=None, init_date=None, provinces=None):
-    """
-    Create a difference map and save as PNG.
-    
-    Args:
-        diff_data (numpy.ndarray): 2D difference data (CanESM5 - GEM5)
-        lat (numpy.ndarray): Latitude values
-        lon (numpy.ndarray): Longitude values
-        date_str (str): Date string for title
-        filename (str): Output filename
-        ontario_bounds (dict): Ontario bounds for reference
-        init_date (datetime): Initialization date
-        provinces (dict): GeoDataFrames for provinces
-    """
+
     fig = plt.figure(figsize=(14, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
     
@@ -217,17 +208,14 @@ def create_difference_map(diff_data, lat, lon, date_str, filename, ontario_bound
     
     return filename
 
-
+# Calling function for the generation of each map
+# Args:
+# - input_dir: Directory containing input .nc files
+# - output_dir: Output directory for maps
+# - buffer_km: Buffer around Ontario in kilometers
+# - target_date: If specified, only generate map for this date
 def generate_difference_maps(input_dir='input', output_dir='output/difference', buffer_km=150, target_date=None):
-    """
-    Generate FWI difference maps (CanESM5 - GEM5.2-NEMO).
-    
-    Args:
-        input_dir (str): Directory containing input .nc files
-        output_dir (str): Output directory for maps
-        buffer_km (float): Buffer around Ontario in kilometers
-        target_date (datetime): If specified, only generate map for this date
-    """
+
     # Load provincial boundaries
     print("Loading provincial boundaries...")
     provinces = load_provincial_boundaries()

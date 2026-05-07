@@ -1,9 +1,7 @@
-"""
-Generate weekly averaged FWI maps (1-week fixed windows).
-
-This script computes mean FWI values over 7-day fixed windows (non-rolling)
-and generates corresponding maps for Ontario region.
-"""
+# Generate weekly FWI maps based on average outputs from the 2 CFS Seasonal Forecast v2 ensembles
+# Weekly outputs are for fixed 7-day periods, and are not a rolling average.
+# Currently in exploratory state and is hard-coded for Ontario
+# Outputs are also limited to the first 3 months of the forecast.
 
 import os
 import re
@@ -23,7 +21,7 @@ warnings.filterwarnings('ignore')
 
 
 def parse_init_date_from_filename(filename):
-    """Extract init date from filename pattern: *_init<YYYYMMDDHH>.nc"""
+
     match = re.search(r'_init(\d{10})', filename)
     if match:
         date_str = match.group(1)
@@ -32,14 +30,7 @@ def parse_init_date_from_filename(filename):
 
 
 def create_fwi_colormap():
-    """
-    Create a colormap for FWI values (0 to 50):
-    - Blue at 0
-    - Green at 5 (0.25)
-    - Yellow at 15 (0.3) - explicit transition for FWI >= 15
-    - Orange at 30 (0.6)
-    - Purple at 50 (1.0)
-    """
+
     colors = [
         (0.0, '#0000FF'),      # Blue at 0
         (0.25, '#00AA00'),     # Green at 5
@@ -54,7 +45,7 @@ def create_fwi_colormap():
 
 
 def load_provincial_boundaries():
-    """Load actual provincial boundaries for Ontario, Manitoba, and Quebec."""
+
     try:
         ne_url = "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_1_states_provinces.zip"
         admin1 = gpd.read_file(ne_url)
@@ -81,15 +72,7 @@ def load_provincial_boundaries():
 
 
 def get_ontario_bounds(buffer_km=150):
-    """
-    Get Ontario boundary with buffer in degrees.
-    
-    Args:
-        buffer_km (float): Buffer distance in kilometers
-        
-    Returns:
-        dict: lat_min, lat_max, lon_min, lon_max (in degrees, -180 to 180)
-    """
+  
     ont_lat_min, ont_lat_max = 41.7, 56.9
     ont_lon_min, ont_lon_max = -95.2, -74.3
     
@@ -107,7 +90,7 @@ def get_ontario_bounds(buffer_km=150):
 
 
 def crop_to_region(ds, bounds):
-    """Crop xarray dataset to specified lat/lon bounds."""
+
     ds_cropped = ds.sel(lat=slice(bounds['lat_min'], bounds['lat_max']))
     
     lon_min, lon_max = bounds['lon_min'], bounds['lon_max']
@@ -128,23 +111,14 @@ def crop_to_region(ds, bounds):
 
 
 def get_3month_window(init_date):
-    """Get the 3-month forecast window from init date."""
+
     start_date = init_date
     end_date = init_date + timedelta(days=91)
     return start_date, end_date
 
 
 def get_weekly_windows(start_date, end_date):
-    """
-    Generate 7-day fixed windows (non-rolling) from start to end date.
-    
-    Args:
-        start_date (datetime): Start date
-        end_date (datetime): End date
-        
-    Returns:
-        list: List of (window_start, window_end, label) tuples
-    """
+   
     windows = []
     current = start_date
     week_num = 1
@@ -166,20 +140,7 @@ def get_weekly_windows(start_date, end_date):
 
 
 def create_fwi_map(fwi_data, lat, lon, model_name, window_start, window_end, filename, init_date=None, provinces=None):
-    """
-    Create and save a weekly FWI map with proper formatting.
-    
-    Args:
-        fwi_data (numpy.ndarray): 2D FWI data
-        lat (numpy.ndarray): Latitude values
-        lon (numpy.ndarray): Longitude values
-        model_name (str): Model name for title
-        window_start (datetime): Start of week
-        window_end (datetime): End of week
-        filename (str): Output filename
-        init_date (datetime): Initialization date
-        provinces (dict): GeoDataFrames for provinces
-    """
+
     fig = plt.figure(figsize=(14, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
     
@@ -259,14 +220,7 @@ def create_fwi_map(fwi_data, lat, lon, model_name, window_start, window_end, fil
 
 
 def generate_weekly_maps(input_dir='input', output_dir='output/weekly', buffer_km=150):
-    """
-    Generate weekly averaged FWI maps.
-    
-    Args:
-        input_dir (str): Directory containing input .nc files
-        output_dir (str): Output directory for maps
-        buffer_km (float): Buffer around Ontario in kilometers
-    """
+
     # Load provincial boundaries
     print("Loading provincial boundaries...")
     provinces = load_provincial_boundaries()

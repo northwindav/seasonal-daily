@@ -17,7 +17,7 @@ Two input files form the basis of this package, though it may be expanded in the
 1. **CanESM5.1p1bc_FWI_<YYYYMMDD_start>-<YYYYMMDD_end>_init<YYYYMMDDHH_init>.nc**
 2. **GEM5.2-NEMO_FWI_<YYYYMMDD_start>_<YYYYMMDD_end>_init<YYYYMMDD_init>.nc**
 
-These files contain daily averages, each from 20 ensemble members, of the Fire Weather Index for Canada and some adjoining regions. While the contents extend out for 7 months, the strong recommendation from developers is to avoid using any outputs beyond 3 months. The use of a daily or weekly temporal scale also violates the intent of the seasonal forecast, and as such is a completely untested and unvalidated product that should be used with extreme caution, if at all.
+These files contain daily projections from each of 20 ensemble members per model, of the Fire Weather Index for Canada and some adjoining regions. While the contents extend out for 7 months, the strong recommendation from developers is to avoid using any outputs beyond 3 months. The use of a daily or weekly temporal scale also violates the intent of the seasonal forecast, and as such is a completely untested and unvalidated product that should be used with extreme caution, if at all.
 
 ## Outputs
 

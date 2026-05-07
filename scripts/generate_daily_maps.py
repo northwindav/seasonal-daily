@@ -1,9 +1,6 @@
-"""
-Generate daily FWI maps for Ontario region.
-
-This script loads FWI data from input NetCDF files, crops to Ontario + buffer,
-and generates daily maps for the 3-month forecast window.
-"""
+# Generate daily FWI maps based on outputs from the 2 CFS Seasonal Forecast v2 ensembles
+# Currently in exploratory state and is hard-coded for Ontario
+# Outputs are also limited to the first 3 months of the forecast.
 
 import os
 import re
@@ -22,27 +19,18 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-
+# Extract model init date from the filename. Used in the footers of all maps.
 def parse_init_date_from_filename(filename):
-    """Extract init date from filename pattern: *_init<YYYYMMDDHH>.nc"""
     match = re.search(r'_init(\d{10})', filename)
     if match:
         date_str = match.group(1)
         return datetime.strptime(date_str, '%Y%m%d%H')
     return None
 
-
+# Hard-code the color map for consistency across models and spatial/temporal dimensions. 
+# Define FWI of 15 as the starting point for yellow-ish. Adjust as needed for regional fire risk thresholds.
 def create_fwi_colormap():
-    """
-    Create a custom colormap for FWI values:
-    - Blue at low values (0)
-    - Green around FWI 10-12
-    - Light yellow starts at FWI >= 15
-    - Orange/Red at higher values
-    - Purple at high values (50)
-    """
-    # Define color stops: normalized position (0-1) → color
-    # Normalized position corresponds to: position * 50 = FWI value
+
     colors = [
         (0.0, '#1f77b4'),      # Blue at FWI 0
         (0.25, '#2ca02c'),     # Green around FWI 12.5
@@ -55,19 +43,15 @@ def create_fwi_colormap():
     cmap = LinearSegmentedColormap.from_list('fwi_custom', colors, N=n_bins)
     return cmap
 
-
+# Retrieve provincial boundaries from naturalearth. 
+# Currently hard-coded for only MB, ON and PQ
+# Returns a geodataframe for each province selected
 def load_provincial_boundaries():
-    """
-    Load actual provincial boundaries for Ontario, Manitoba, and Quebec.
-    
-    Returns:
-        dict: GeoDataFrames for each province
-    """
+
     try:
         ne_url = "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_1_states_provinces.zip"
         admin1 = gpd.read_file(ne_url)
         
-        # Filter for Canada
         canada = admin1[admin1['admin'] == 'Canada']
         
         provinces = {}
@@ -76,7 +60,7 @@ def load_provincial_boundaries():
             if len(prov_data) > 0:
                 provinces[prov_name] = prov_data
             else:
-                # Try alternate spelling
+                # As of May 2026 the accent aigu is required
                 if prov_name == 'Québec':
                     prov_data = canada[canada['name'] == 'Quebec']
                     if len(prov_data) > 0:
@@ -87,20 +71,13 @@ def load_provincial_boundaries():
         print(f"Warning: Could not load provincial boundaries: {e}")
         return {}
 
-
+# Define the map bounds and buffer
+# Currently hard-coded for ON 
+# Buffer may be expanded from 150 km if desired
+# This is a crude approach, where we define a bounding box rather than creating a true buffer
+# Returns: dictionary containing a buffered bounding box with coordinates in degrees
 def get_ontario_bounds(buffer_km=150):
-    """
-    Get Ontario boundary with buffer in degrees.
-    
-    Ontario approximate bounds: 41.7-56.9°N, -95.2 to -74.3°W
-    Buffer: configurable in km (default 150km ~1.3 degrees at this latitude)
-    
-    Args:
-        buffer_km (float): Buffer distance in kilometers
-        
-    Returns:
-        dict: lat_min, lat_max, lon_min, lon_max (in degrees, -180 to 180)
-    """
+
     # Ontario bounds (approximate)
     ont_lat_min, ont_lat_max = 41.7, 56.9
     ont_lon_min, ont_lon_max = -95.2, -74.3
@@ -117,18 +94,9 @@ def get_ontario_bounds(buffer_km=150):
     
     return bounds
 
-
+# Crop the xarray containing the actual data, based on the bounds defined in get_ontario_bounds()
 def crop_to_region(ds, bounds):
-    """
-    Crop xarray dataset to specified lat/lon bounds.
-    
-    Args:
-        ds (xarray.Dataset): Input dataset
-        bounds (dict): lat_min, lat_max, lon_min, lon_max
-        
-    Returns:
-        xarray.Dataset: Cropped dataset
-    """
+
     # Crop latitude
     ds_cropped = ds.sel(lat=slice(bounds['lat_min'], bounds['lat_max']))
     
@@ -151,44 +119,34 @@ def crop_to_region(ds, bounds):
     
     return ds_cropped
 
-
+# We hard-code a 3-month limit since plotting at daily resolution is completely
+# beyond the intent of the seasonal product, and is also unvalidated.
 def get_3month_window(init_date):
-    """
-    Get the 3-month forecast window from init date.
-    
-    Args:
-        init_date (datetime): Initialization date
-        
-    Returns:
-        tuple: (start_date, end_date)
-    """
+
     start_date = init_date
     end_date = init_date + timedelta(days=91)  # ~3 months
     return start_date, end_date
 
-
+# Called for each map, and outputs a png
+# In:
+# - fwi_data: numpy.ndarray. 2D array containing FWI data for a single day, cropped to the ROI.
+# - lat and lon: numpy.ndarray
+# - date_str: string for the title (e.g., '2026-05-06')
+# - filename: output file name for the png
+# - ontario_bounds: dict containing the ROI boundaries
+# - model_name: str containing the name of the forecast model
+# - initi_date: datetime object for the model initialization date
+# - provinces: dict of geodataframes for the provinces to plot
 def create_fwi_map(fwi_data, lat, lon, date_str, filename, ontario_bounds=None, model_name=None, init_date=None, provinces=None):
-    """
-    Create a single FWI map and save as PNG.
-    
-    Args:
-        fwi_data (numpy.ndarray): 2D FWI data (lat x lon)
-        lat (numpy.ndarray): Latitude values
-        lon (numpy.ndarray): Longitude values
-        date_str (str): Date string for title
-        filename (str): Output filename
-        ontario_bounds (dict): Ontario bounds for reference
-        model_name (str): Name of the forecast model
-        init_date (datetime): Initialization date
-        provinces (dict): GeoDataFrames for provinces
-    """
+
     fig = plt.figure(figsize=(14, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
     
     # Set extent
     ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=ccrs.PlateCarree())
     
-    # Add features
+    # Add features. 
+    # Cities are not included by default but can be accessed via cartopy's Natural Earth features.
     ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
     ax.add_feature(cfeature.BORDERS, linewidth=0.5)
     ax.add_feature(cfeature.LAKES, alpha=0.3)
@@ -196,6 +154,7 @@ def create_fwi_map(fwi_data, lat, lon, date_str, filename, ontario_bounds=None, 
     ax.gridlines(draw_labels=True, alpha=0.3)
     
     # Plot FWI data with custom colormap and fixed scale (0-50)
+    # Change the scale here if plotting where FWI values are expected to be lower.
     cmap = create_fwi_colormap()
     norm = mcolors.Normalize(vmin=0, vmax=50)
     
@@ -271,17 +230,13 @@ def create_fwi_map(fwi_data, lat, lon, date_str, filename, ontario_bounds=None, 
     
     return filename
 
-
+# Calling function for generating the daily maps.
+# - input_dir (str): Directory containing input .nc files
+# - output_dir (str): Directory to save output maps
+# - buffer_km (float): Buffer around Ontario in kilometers
+# - target_date (datetime, optional): If specified, only generate map for this date
 def generate_daily_maps(input_dir='input', output_dir='output/daily', buffer_km=150, target_date=None):
-    """
-    Generate daily FWI maps for all timesteps.
-    
-    Args:
-        input_dir (str): Directory containing input .nc files
-        output_dir (str): Output directory for maps
-        buffer_km (float): Buffer around Ontario in kilometers
-        target_date (datetime): If specified, only generate map for this date
-    """
+
     # Load provincial boundaries once
     print("Loading provincial boundaries...")
     provinces = load_provincial_boundaries()
@@ -338,11 +293,12 @@ def generate_daily_maps(input_dir='input', output_dir='output/daily', buffer_km=
         time = ds_cropped['time'].values
         fwi = ds_cropped['FWI'].values  # Shape: (time, member, lat, lon)
         
+        # Debugging info
         print(f"  Cropped dimensions: time={fwi.shape[0]}, members={fwi.shape[1]}, lat={fwi.shape[2]}, lon={fwi.shape[3]}")
         
         # Generate map for each timestep
         # Average across ensemble members
-        fwi_mean = np.nanmean(fwi, axis=1)  # Average ensemble members
+        fwi_mean = np.nanmean(fwi, axis=1) 
         
         # Filter to 3-month window
         # Convert time coordinates to datetime objects
